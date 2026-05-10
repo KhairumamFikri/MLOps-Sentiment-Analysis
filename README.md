@@ -145,8 +145,3 @@ Project ini menggunakan lisensi MIT License.
 
 ---
 
-## Author
-
-Nama: [Isi Nama Anda]
-Mata Kuliah: MLOps
-Topik Project: Sentiment Analysis
