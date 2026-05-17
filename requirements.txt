@@ -1,5 +1,6 @@
 pandas
-numpy
+youtube-comment-downloader
+nltk
+Sastrawi
 scikit-learn
-jupyter
-matplotlib
+joblib
