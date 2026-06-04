@@ -1,0 +1,23 @@
+artifact_path: /workspaces/MLOps-Sentiment-Analysis/mlruns/1/models/m-3cc867a96d404a7986bd4a6d98d242c1/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.12.0
+model_id: m-3cc867a96d404a7986bd4a6d98d242c1
+model_size_bytes: 120764
+model_uuid: m-3cc867a96d404a7986bd4a6d98d242c1
+prompts: null
+run_id: df6a86b7ed2a4dbf8f9f9784c047243f
+utc_time_created: '2026-05-18 02:01:03.168533'

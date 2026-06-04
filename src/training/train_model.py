@@ -1,93 +1,83 @@
-import pandas as pd
-import glob
 import os
+import glob
+import pandas as pd
+import mlflow
+import mlflow.sklearn
+import joblib
 
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
-    classification_report,
-    confusion_matrix
+    f1_score,
+    classification_report
 )
 
-import joblib
+# =========================
+# LOAD DATASET
+# =========================
 
 LABELED_DIR = "data/labeled"
-MODEL_DIR = "models"
 
-os.makedirs(MODEL_DIR, exist_ok=True)
-
-# =========================
-# LOAD DATA
-# =========================
-
-list_files = glob.glob(f"{LABELED_DIR}/*.csv")
+list_files = glob.glob(
+    f"{LABELED_DIR}/*.csv"
+)
 
 if not list_files:
-    raise Exception("Tidak ada labeled dataset!")
+    raise Exception(
+        "Tidak ada labeled dataset!"
+    )
 
-latest_file = max(list_files, key=os.path.getctime)
+DATASET_PATH = (
+    "data/processed/processed_comments_20260516_110522.csv"
+)
 
-print(f"Membaca dataset: {latest_file}")
+print(f"Dataset: {DATASET_PATH}")
 
 df = pd.read_csv(
-    latest_file,
+    DATASET_PATH,
     on_bad_lines="skip"
 )
-# =========================
-# LOAD FEEDBACK DATA
-# =========================
-
-feedback_file = "data/feedback/feedback.csv"
-
-if os.path.exists(feedback_file):
-
-    print("Menggabungkan feedback dataset...")
-
-    feedback_df = pd.read_csv(feedback_file)
-
-    df = pd.concat(
-        [df, feedback_df],
-        ignore_index=True
-    )
-
-    # Hapus duplicate
-    df = df.drop_duplicates(
-        subset=["clean_text"]
-    )
 # =========================
 # CLEAN DATA
 # =========================
 
-df = df.dropna(subset=["clean_text", "sentiment"])
+df = df.dropna(
+    subset=["clean_text", "sentiment"]
+)
 
-df = df[df["clean_text"].str.strip() != ""]
+df["clean_text"] = (
+    df["clean_text"]
+    .astype(str)
+    .str.strip()
+)
+
+df["sentiment"] = (
+    df["sentiment"]
+    .astype(str)
+    .str.strip()
+)
+
+df = df[
+    (df["clean_text"] != "") &
+    (df["sentiment"] != "")
+]
 
 # =========================
 # FEATURES & LABEL
 # =========================
 
 X = df["clean_text"]
-
 y = df["sentiment"]
-
-# =========================
-# TF-IDF
-# =========================
-
-vectorizer = TfidfVectorizer(
-    max_features=5000
-)
-
-X_vectorized = vectorizer.fit_transform(X)
 
 # =========================
 # SPLIT DATA
 # =========================
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X_vectorized,
+    X,
     y,
     test_size=0.2,
     random_state=42,
@@ -95,53 +85,182 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # =========================
-# TRAIN MODEL
+# EXPERIMENT PARAMETER
 # =========================
 
-model = LogisticRegression(
-    max_iter=1000
+MAX_FEATURES = 5000
+NGRAM_RANGE = (1, 2)
+C = 0.5
+
+# =========================
+# SET EXPERIMENT
+# =========================
+
+mlflow.set_experiment(
+    "sentiment-analysis"
 )
 
-print("Training model...")
-
-model.fit(X_train, y_train)
-
 # =========================
-# PREDICTION
+# START RUN
 # =========================
 
-y_pred = model.predict(X_test)
-
-# =========================
-# EVALUATION
-# =========================
-
-accuracy = accuracy_score(y_test, y_pred)
-
-print("\n=== HASIL EVALUASI ===")
-
-print(f"Accuracy: {accuracy:.4f}")
-
-print("\nClassification Report:")
-
-print(classification_report(y_test, y_pred))
-
-print("\nConfusion Matrix:")
-
-print(confusion_matrix(y_test, y_pred))
-
-# =========================
-# SAVE MODEL
-# =========================
-
-joblib.dump(
-    model,
-    f"{MODEL_DIR}/sentiment_model.pkl"
+DVC_METADATA_FILE = (
+    "data/labeled/final_labeled_v2.csv.dvc"
 )
 
-joblib.dump(
-    vectorizer,
-    f"{MODEL_DIR}/tfidf_vectorizer.pkl"
-)
+with mlflow.start_run():
 
-print("\nModel berhasil disimpan.")
+    # =========================
+    # LOG DVC METADATA
+    # =========================
+
+    with open(
+        DVC_METADATA_FILE,
+        "r"
+    ) as f:
+
+        dvc_metadata = f.read()
+
+    mlflow.log_text(
+        dvc_metadata,
+        "dataset_version.txt"
+    )
+
+    # =========================
+    # LOG PARAMETERS
+    # =========================
+
+    mlflow.log_param(
+        "max_features",
+        MAX_FEATURES
+    )
+
+    mlflow.log_param(
+        "ngram_range",
+        str(NGRAM_RANGE)
+    )
+
+    mlflow.log_param(
+        "C",
+        C
+    )
+
+    # =========================
+    # PIPELINE
+    # =========================
+
+    pipeline = Pipeline([
+
+        (
+            "tfidf",
+            TfidfVectorizer(
+                max_features=MAX_FEATURES,
+                ngram_range=NGRAM_RANGE,
+                lowercase=True
+            )
+        ),
+
+        (
+            "classifier",
+            LogisticRegression(
+                max_iter=1000,
+                class_weight="balanced",
+                C=C,
+                random_state=42
+            )
+        )
+
+    ])
+
+    print("Training pipeline model...")
+
+    # =========================
+    # TRAINING
+    # =========================
+
+    pipeline.fit(
+        X_train,
+        y_train
+    )
+
+    # =========================
+    # PREDICTION
+    # =========================
+
+    y_pred = pipeline.predict(
+        X_test
+    )
+
+    # =========================
+    # METRICS
+    # =========================
+
+    accuracy = accuracy_score(
+        y_test,
+        y_pred
+    )
+
+    f1 = f1_score(
+        y_test,
+        y_pred,
+        average="macro"
+    )
+
+    print("\n=== HASIL EVALUASI ===")
+
+    print(
+        f"Accuracy : {accuracy:.4f}"
+    )
+
+    print(
+        f"F1 Score : {f1:.4f}"
+    )
+
+    print("\nClassification Report:")
+
+    print(
+        classification_report(
+            y_test,
+            y_pred
+        )
+    )
+
+    # =========================
+    # LOG METRICS
+    # =========================
+
+    mlflow.log_metric(
+        "accuracy",
+        accuracy
+    )
+
+    mlflow.log_metric(
+        "f1_score",
+        f1
+    )
+
+    # =========================
+    # SAVE LOCAL MODEL
+    # =========================
+
+    os.makedirs(
+        "models",
+        exist_ok=True
+    )
+
+    joblib.dump(
+        pipeline,
+        "models/sentiment_pipeline.pkl"
+    )
+
+    # =========================
+    # LOG MODEL TO MLFLOW
+    # =========================
+
+    mlflow.sklearn.log_model(
+        sk_model=pipeline,
+        artifact_path="model",
+        registered_model_name="sentiment-analysis-model"
+    )
+
+    print("\nModel berhasil disimpan.")
