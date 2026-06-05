@@ -18,7 +18,7 @@ from sklearn.metrics import (
 # =========================
 
 df = pd.read_csv(
-    "data/processed/processed_indobert_20260525_055827.csv"
+    "data/processed/processed_20260525_055827.csv"
 )
 
 df = df.dropna(
@@ -62,8 +62,10 @@ X_test_emb = embedding_model.encode(
 # =========================
 
 model = LogisticRegression(
-    max_iter=2000,
-    class_weight="balanced"
+    max_iter=3000,
+    class_weight="balanced",
+    C=2.0,
+    solver="lbfgs"
 )
 
 # =========================
