@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+
+pandas
+numpy
+
+scikit-learn
+joblib
+
+sentence-transformers
+transformers
+torch
+
+mlflow
+
+python-dotenv
