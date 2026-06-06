@@ -2,6 +2,7 @@ import pandas as pd
 import mlflow
 import mlflow.sklearn
 import joblib
+import json
 
 from sentence_transformers import SentenceTransformer
 
@@ -62,9 +63,9 @@ X_test_emb = embedding_model.encode(
 # =========================
 
 model = LogisticRegression(
-    max_iter=3000,
+    max_iter=2500,
     class_weight="balanced",
-    C=2.0,
+    C=3.0,
     solver="lbfgs"
 )
 
@@ -127,6 +128,17 @@ with mlflow.start_run():
             y_pred
         )
     )
+
+    metrics = {
+        "accuracy": float(accuracy),
+        "f1_score": float(f1)
+    }
+
+    with open(
+        "metrics.json",
+        "w"
+    ) as f:
+        json.dump(metrics, f)
 
     mlflow.sklearn.log_model(
         sk_model=model,

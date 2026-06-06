@@ -1,0 +1,23 @@
+artifact_path: /workspaces/MLOps-Sentiment-Analysis/mlruns/3/models/m-f5650d3149e0495aaf9c23ce1630f5f1/artifacts
+flavors:
+  python_function:
+    artifacts:
+      classifier:
+        path: artifacts/sentence_lr.pkl
+        uri: models/sentence_lr.pkl
+    cloudpickle_version: 3.1.2
+    code: null
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pyfunc.model
+    python_model: python_model.pkl
+    python_version: 3.12.1
+    streamable: false
+mlflow_version: 3.12.0
+model_id: m-f5650d3149e0495aaf9c23ce1630f5f1
+model_size_bytes: 12715
+model_uuid: m-f5650d3149e0495aaf9c23ce1630f5f1
+prompts: null
+run_id: ee010344f78645618fddb2db89796415
+utc_time_created: '2026-06-06 11:10:47.066562'
