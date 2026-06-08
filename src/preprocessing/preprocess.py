@@ -1,105 +1,71 @@
 import pandas as pd
-import re
 import glob
 import os
-import string
-import csv
+import re
 from datetime import datetime
 
-from Sastrawi.StopWordRemover.StopWordRemoverFactory import (
-    StopWordRemoverFactory
-)
-
 RAW_DIR = "data/raw"
-PROCESSED_DIR = "data/processed"
+OUTPUT_DIR = "data/processed"
 
-os.makedirs(PROCESSED_DIR, exist_ok=True)
+os.makedirs(
+    OUTPUT_DIR,
+    exist_ok=True
+)
 
 # =========================
 # LOAD DATA TERBARU
 # =========================
 
-list_files = glob.glob(f"{RAW_DIR}/*.csv")
+list_files = glob.glob(
+    f"{RAW_DIR}/*.csv"
+)
 
 if not list_files:
-    raise Exception("Tidak ada file raw data!")
+    raise Exception(
+        "Tidak ada dataset raw."
+    )
 
-latest_file = max(list_files, key=os.path.getctime)
+latest_file = max(
+    list_files,
+    key=os.path.getctime
+)
 
-print(f"Memproses file: {latest_file}")
+print(
+    f"Membaca: {latest_file}"
+)
 
 df = pd.read_csv(
-    latest_file,
-    encoding="utf-8",
-    on_bad_lines="skip"
+    latest_file
 )
 
 # =========================
-# NORMALIZATION MAP
+# NORMALISASI RINGAN
 # =========================
 
-NORMALIZATION_MAP = {
-    "gak": "tidak",
+NORMALIZATION = {
+
+    "gk": "tidak",
     "ga": "tidak",
+    "gak": "tidak",
     "nggak": "tidak",
-    "ngga": "tidak",
+
     "tdk": "tidak",
-    "kagak": "tidak",
 
-    "bgt": "sangat",
-    "banget": "sangat",
-
-    "udah": "sudah",
-    "sdh": "sudah",
+    "bgt": "banget",
 
     "tp": "tapi",
-    "tpi": "tapi",
 
-    "klo": "kalau",
-    "kalo": "kalau",
+    "yg": "yang",
+
+    "krn": "karena",
 
     "utk": "untuk",
-    "yg": "yang",
-    "dgn": "dengan",
-    "jd": "jadi",
 
-    "blm": "belum",
-    "krn": "karena"
+    "dr": "dari",
+
+    "trmksh": "terima kasih",
+    
 }
-
-# =========================
-# STOPWORDS
-# =========================
-
-stop_factory = StopWordRemoverFactory()
-
-stopwords = set(
-    stop_factory.get_stop_words()
-)
-
-NEGATION_WORDS = {
-    "tidak",
-    "bukan",
-    "jangan",
-    "belum",
-    "kurang",
-    "tanpa",
-    "tapi",
-    "namun"
-}
-
-ADDITIONAL_STOPWORDS = {
-    "nya",
-    "sih",
-    "lah",
-    "deh",
-    "pun",
-    "kok"
-}
-
-stopwords = (
-    stopwords | ADDITIONAL_STOPWORDS
-) - NEGATION_WORDS
 
 # =========================
 # CLEAN FUNCTION
@@ -107,103 +73,84 @@ stopwords = (
 
 def clean_text(text):
 
-    text = str(text).lower()
+    text = str(text)
 
-    # Hapus URL, mention, hashtag
+    text = text.lower()
+
+    # hapus url
     text = re.sub(
-        r"http\S+|@\w+|#\w+",
+        r"http\S+",
         "",
         text
     )
 
-    # JANGAN HAPUS ANGKA
-
-    # Hapus emoji/non-ascii
-    text = text.encode(
-        "ascii",
-        "ignore"
-    ).decode()
-
-    # Hapus punctuation
-    text = text.translate(
-        str.maketrans(
-            "",
-            "",
-            string.punctuation
-        )
+    # hapus mention
+    text = re.sub(
+        r"@\w+",
+        "",
+        text
     )
 
-    # Rapikan whitespace
-    text = " ".join(text.split())
+    # rapikan spasi
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
 
-    # Tokenization
-    tokens = text.split()
+    tokens = []
 
-    cleaned_tokens = []
+    for word in text.split():
 
-    for word in tokens:
-
-        # Normalisasi slang
-        word = NORMALIZATION_MAP.get(
-            word,
-            word
+        tokens.append(
+            NORMALIZATION.get(
+                word,
+                word
+            )
         )
 
-        # Stopword removal
-        if word not in stopwords:
-
-            # Pertahankan token > 1 karakter
-            if len(word) > 1:
-
-                cleaned_tokens.append(word)
-
-    return " ".join(cleaned_tokens)
+    return " ".join(
+        tokens
+    ).strip()
 
 # =========================
-# DATA CLEANING
+# CLEANING
 # =========================
 
-df = df.dropna(subset=["text"])
-
-df = df.drop_duplicates(
+df = df.dropna(
     subset=["text"]
 )
 
-print("Melakukan preprocessing text...")
-
-df["clean_text"] = df["text"].apply(
-    clean_text
+df["clean_text"] = (
+    df["text"]
+    .apply(clean_text)
 )
 
-# Hapus hasil kosong
+# hapus kosong
 df = df[
-    df["clean_text"].str.strip() != ""
+    df["clean_text"]
+    .str.strip() != ""
 ]
 
-# =========================
-# RANDOM SAMPLE 1000 DATA
-# =========================
+# hanya ambil clean_text
+df = df[
+    ["clean_text"]
+]
 
-MAX_DATA = 1000
+# buat kolom label kosong
+df["sentiment"] = ""
 
-if len(df) > MAX_DATA:
+# ambil maksimum 1000 random
+if len(df) > 1000:
 
     df = df.sample(
-        n=MAX_DATA,
+        n=1000,
         random_state=42
     )
 
-# =========================
-# FORMAT FINAL
-# =========================
-
-df = df[["clean_text"]]
-
-# Tambah kolom sentiment kosong
-df["sentiment"] = ""
-
-# Reset index
-df = df.reset_index(drop=True)
+df = df.reset_index(
+    drop=True
+)
 
 # =========================
 # SAVE
@@ -214,15 +161,29 @@ timestamp = datetime.now().strftime(
 )
 
 output_file = (
-    f"{PROCESSED_DIR}/processed_comments_{timestamp}.csv"
+    f"{OUTPUT_DIR}/"
+    f"processed_indobert_{timestamp}.csv"
 )
 
 df.to_csv(
     output_file,
-    index=False,
-    quoting=csv.QUOTE_ALL
+    index=False
 )
 
-print("\n--- SELESAI ---")
-print(f"Jumlah data akhir: {len(df)}")
-print(f"Hasil disimpan ke: {output_file}")
+print("\n=== SELESAI ===")
+
+print(
+    f"Jumlah data: {len(df)}"
+)
+
+print(
+    f"Output: {output_file}"
+)
+
+print(
+    "\nKolom:"
+)
+
+print(
+    df.columns.tolist()
+)

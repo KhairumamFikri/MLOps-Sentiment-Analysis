@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+
+numpy
+pandas
+
+scikit-learn
+joblib
+
+mlflow
+
+python-dotenv
+
+boto3
+psycopg2-binary
