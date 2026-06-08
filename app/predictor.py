@@ -1,24 +1,29 @@
-import requests
+import pandas as pd
+import mlflow.pyfunc
 
-MODEL_URL = (
-    "http://model-serving:1234/invocations"
-)
+MODEL_URI = "models:/sentence-transformer-sentiment/1"
+
+classifier = None
+
+def load_model():
+    global classifier
+
+    if classifier is None:
+        classifier = mlflow.pyfunc.load_model(
+            MODEL_URI
+        )
+
+    return classifier
+
 
 def predict_sentiment(text):
 
-    response = requests.post(
-        MODEL_URL,
-        json={
-            "dataframe_records": [
-                {
-                    "text": text
-                }
-            ]
-        }
+    model = load_model()
+
+    prediction = model.predict(
+        pd.DataFrame({
+            "text": [text]
+        })
     )
 
-    response.raise_for_status()
-
-    result = response.json()
-
-    return result["predictions"][0]
+    return prediction[0]
