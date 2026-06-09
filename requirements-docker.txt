@@ -18,3 +18,5 @@ psycopg2-binary
 sentence-transformers
 transformers
 torch
+streamlit
+requests
