@@ -1,7 +1,12 @@
 import pandas as pd
 import mlflow.pyfunc
+import mlflow
 
-MODEL_URI = "models:/sentence-transformer-sentiment/1"
+mlflow.set_tracking_uri(
+    "http://mlflow:5000"
+)
+
+MODEL_URI = "models:/sentence-transformer-sentiment@production"
 
 classifier = None
 

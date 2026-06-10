@@ -6,6 +6,9 @@ import plotly.express as px
 from minio import Minio
 from pathlib import Path
 from datetime import datetime
+from src.utils.minio_utils import (
+    upload_file
+)
 
 # =====================================================
 # CONFIG
@@ -43,11 +46,14 @@ if "show_correction" not in st.session_state:
 # SAVE FEEDBACK
 # =====================================================
 
-def save_feedback(text_value, sentiment_label):
-    
-    text_value = text_value.strip()
+def save_feedback(
+    text_value,
+    sentiment_label
+):
 
-    Path("feedback").mkdir(exist_ok=True)
+    Path("feedback").mkdir(
+        exist_ok=True
+    )
 
     dataset_path = (
         "feedback/feedback_dataset.csv"
@@ -73,6 +79,11 @@ def save_feedback(text_value, sentiment_label):
             dataset_path,
             index=False
         )
+
+    upload_file(
+        dataset_path,
+        "feedback/feedback_dataset.csv"
+    )
 
     return dataset_path
 
