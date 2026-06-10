@@ -20,3 +20,4 @@ transformers
 torch
 streamlit
 requests
+prometheus-client
